@@ -15,7 +15,13 @@ yellow = {
 }
 
 when we add this to text, it will draw it in yellow (provided we have defined colours.yellow)
+adding this to text is just doing 'this text is[yellow] yellow' so the words following [yellow] will be in yellow
 
+GOAL:
+we can make a textbox that automatically encapsulates a text object
+we can then add additional textboxes (called tooltips) that appear when interacting with the main textbox
+we can also add a function to the textbox that calls on press which turns it into a button
+we can also add satisfying movement to the box when the mouse hovers over it
 ]]
 
 function text:new(txt, fx, font, align, limit)
@@ -23,11 +29,9 @@ function text:new(txt, fx, font, align, limit)
         txt = '[white]'..txt 
     end
 
-    self.canvas = global_canvas
     self.cleaned_text = {}
     self.raw_string = ''
     self.line_height = font:getHeight()
-    graphics.setCanvas(self.canvas)
     self.text_width = font:getWidth('v')
     self.chars = {}
     self.font = font
@@ -110,6 +114,7 @@ function text:update(dt)
     end
 end
 
+--UNCOMMENT THIS TEXT TO SEE IT WHEN IT HASN'T GOT THE CANVAS ENABLED
 function text:print(x, y)
     --graphics.setCanvas()
     --x, y = x * window.scale, y * window.scale
