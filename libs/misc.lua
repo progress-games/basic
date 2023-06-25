@@ -88,6 +88,27 @@ function table.get_keys(t, v, v_name)
     return res
 end 
 
+function table.max(t, k)
+    local max = -math.huge
+    for _, v in pairs(t) do
+        max = math.max(v[k], max)
+    end
+    return max
+end
+
+function table.min(t, k)
+    local min = math.huge
+    for _, v in pairs(t) do
+        min = math.min(v[k], min)
+    end
+    return min 
+end
+
+function set_font(name)
+    graphics.setFont(font[config.language][name])
+    font.current = font[config.language][name]
+end
+
 --used when calling a function that may or may not exist
 function call(func, ...)
     if func then func(...) end

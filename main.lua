@@ -16,7 +16,8 @@ colours = {
     green = colour(0, 1, 0),
     blue = colour(0, 0, 1),
     mum = colour(86, 240, 3),
-    yellow = colour(1, 1, 0)
+    yellow = colour(1, 1, 0),
+    invis = colour(0, 0, 0, 0)
 }
 
 text_tags = {
@@ -51,7 +52,7 @@ text_tags = {
     },
     roll = {
         init = function (char)         
-            char.step = 4 + char.i
+            char.step = 4 + char.i*2
             char.moved = 0
             char.dir = 1
         end,
@@ -79,50 +80,6 @@ end
 colours.black.lock = true
 colours.white.lock = true
 
--- LÖVE 0.10.2 fixed timestep loop, Lua version
-function love.run()
-    if love.load then love.load(arg) end
-    if love.timer then love.timer.step() end
-
-    local dt = 0
-    local fixed_dt = 1/60
-    local accumulator = 0
-
-    while true do
-        if love.event then
-            love.event.pump()
-            for name, a, b, c, d, e, f in love.event.poll() do
-                if name == 'quit' then
-                    if not love.quit or not love.quit() then
-                        return a
-                    end
-                end
-                love.handlers[name](a, b, c, d, e, f)
-            end
-        end
-
-        if love.timer then
-            love.timer.step()
-            dt = love.timer.getDelta()
-        end
-
-        accumulator = accumulator + dt
-        while accumulator >= fixed_dt do
-            if love.update then love.update(fixed_dt) end
-            accumulator = accumulator - fixed_dt
-        end
-
-        if love.graphics and love.graphics.isActive() then
-            love.graphics.clear(love.graphics.getBackgroundColor())
-            love.graphics.origin()
-            if love.draw then love.draw() end
-            love.graphics.present()
-        end
-
-        if love.timer then love.timer.sleep(0.0001) end
-    end
-end
-
 function love.load()
     --room management
     --love.window.setFullscreen(true)
@@ -145,9 +102,19 @@ function love.load()
         y = 0
     }
 
+    config = {
+        language = 'english'
+    }
+
+    font = {}
+    font.english = {
+        main = graphics.newFont(20)
+    }
+    font.current = graphics.getFont()
+
     camera = Camera(world.x, world.y)
     love.graphics.setDefaultFilter('nearest', 'nearest')
-    canvas = love.graphics.newCanvas(window.x/window.scale, window.y/window.scale)
+    global_canvas = love.graphics.newCanvas(window.x/window.scale, window.y/window.scale)
 
     active_rooms = {menu()}
 end
@@ -165,7 +132,7 @@ function love.draw()
     mouse_pos()
     for _, room in ipairs(active_rooms) do
         if room.uses_canvas then
-            love.graphics.setCanvas(canvas)
+            love.graphics.setCanvas(global_canvas)
             love.graphics.clear()
             love.graphics.setLineStyle('rough')
             
@@ -174,7 +141,7 @@ function love.draw()
             love.graphics.setCanvas()
             love.graphics.setColor(1, 1, 1, 1)
             love.graphics.setBlendMode('alpha', 'premultiplied')
-            love.graphics.draw(canvas, 0, 0, 0, window.scale, window.scale )
+            love.graphics.draw(global_canvas, 0, 0, 0, window.scale, window.scale )
             love.graphics.setBlendMode('alpha')
         else
             room:draw()

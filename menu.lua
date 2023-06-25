@@ -5,7 +5,12 @@ function menu:new()
     self.particles = particles()
     self.particles:new_type('test', {8, 14}, {to_dt(1), to_dt(3)}, {0, 2*math.pi}, colours.green, 50, {colour = colours.white, width = 1})
     self.particles:new_generator('test_gen', 40, 'test', 'mouse')
-    test_texts = {text('the way this works is pretty straight forward. each character has any number of tags that can determine it\'s [red]colour[shaking], or movement[roll, yellow], or both[white] and i can easily make as many tags as i want without expanding this code!', text_tags, graphics.getFont(), 'center', 200)}
+    set_font('main')
+    test_text = text('here\'s a simple text', text_tags, font.current, 'center', 100)
+    test_textbox = textbox(test_text, 50, 100)
+    tooltip_text = text('insert [yellow]description [shaking]here', text_tags, font.current, 'center', 400)
+    tooltip_textbox = textbox(tooltip_text)
+    test_textbox:add_tooltip(tooltip_textbox)
 end
 
 function menu:enter()
@@ -18,17 +23,10 @@ end
 
 function menu:update(dt)
     self.particles:update(dt)
-    if love.mouse.isDown(1) then
-        self.particles:new_particles('test_gen')
-    end
-    for _, v in pairs(test_texts) do
-        v:update(dt)
-    end
+    test_textbox:update(dt)
 end
 
 function menu:draw()
-    for i, v in ipairs(test_texts) do
-        v:print(15, 50*i)
-    end
+    test_textbox:draw()
     self.particles:draw()
 end
