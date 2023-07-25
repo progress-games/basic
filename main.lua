@@ -5,6 +5,7 @@ Timer = require 'libs.Timer'
 require 'objects.particles'
 require 'objects.text'
 require 'objects.colour'
+require 'objects.canvases'
 graphics = love.graphics
 
 require 'menu'
@@ -17,7 +18,10 @@ colours = {
     blue = colour(0, 0, 1),
     mum = colour(86, 240, 3),
     yellow = colour(1, 1, 0),
-    invis = colour(0, 0, 0, 0)
+    invis = colour(0, 0, 0, 0),
+    transparent = {
+        black = colour(0, 0, 0, 0.5)
+    }
 }
 
 text_tags = {
@@ -70,11 +74,21 @@ text_tags = {
 }
 
 for colour, obj in pairs(colours) do
-    text_tags[colour] = {
-        draw = function ()
-            obj:set()
+    if type(colour) ~= 'table' then
+        text_tags[colour] = {
+            draw = function ()
+                obj:set()
+            end
+        }
+    else
+        for name, sub in pairs(obj) do
+            text_tags[colour..'-'..name] = {
+                draw = function ()
+                    sub:set()
+                end
+            }
         end
-    }
+    end
 end
 
 colours.black.lock = true
@@ -114,9 +128,10 @@ function love.load()
 
     camera = Camera(world.x, world.y)
     love.graphics.setDefaultFilter('nearest', 'nearest')
-    global_canvas = love.graphics.newCanvas(window.x/window.scale, window.y/window.scale)
 
-    active_rooms = {menu()}
+    canvases = Canvases({window.x/window.scale, window.y/window.scale})
+
+    active_rooms = {arena()}
 end
 
 function love.update(dt)
@@ -132,17 +147,11 @@ function love.draw()
     mouse_pos()
     for _, room in ipairs(active_rooms) do
         if room.uses_canvas then
-            love.graphics.setCanvas(global_canvas)
-            love.graphics.clear()
-            love.graphics.setLineStyle('rough')
+            canvases:set()
             
             room:draw()
             
-            love.graphics.setCanvas()
-            love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.setBlendMode('alpha', 'premultiplied')
-            love.graphics.draw(global_canvas, 0, 0, 0, window.scale, window.scale )
-            love.graphics.setBlendMode('alpha')
+            canvases:draw()
         else
             room:draw()
         end
@@ -162,6 +171,13 @@ function love.mousepressed()
     mouse_pos()
     table.call(active_rooms, function (room)
         call(room.mousepressed, room)
+    end)
+end
+
+function love.mousemoved()
+    mouse_pos()
+    table.call(active_rooms, function (room)
+        call(room.mousemoved, room)
     end)
 end
 

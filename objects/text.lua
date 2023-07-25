@@ -31,9 +31,10 @@ function text:new(txt, fx, font, align, limit)
 
     self.cleaned_text = {}
     self.raw_string = ''
-    self.line_height = font:getHeight()
+    self.line_height = font:getHeight()--/window.scale
     self.text_width = font:getWidth('v')
     self.chars = {}
+    self.v = 0
     self.font = font
     for str, tags in txt:gmatch("([^%[]*)(%b[])") do
         if str ~= "" then
@@ -66,12 +67,20 @@ function text:new(txt, fx, font, align, limit)
     end
 
     if align == nil then align = 'center' end
-    self:position(align, limit)
+    if limit == nil then limit = 100 end
+    self.align, self.limit = align, limit*window.scale
+    self:position()
 end
 
 function text:position(align, limit)
-    _, self.lines = self.font:getWrap(self.raw_string, limit)
-    local center, height = limit/2, self.font:getHeight()
+    if align == nil then
+        align, limit = self.align, self.limit
+    else
+        self.align, self.limit = align, limit
+    end
+
+    _, self.lines = self.font:getWrap(self.raw_string, self.limit)
+    local center, height = self.limit/2, self.font:getHeight()
     local idx = 1
     for gaps, line in ipairs(self.lines) do
         local cur_line, line_width = '', self.font:getWidth(line)
@@ -79,11 +88,11 @@ function text:position(align, limit)
             if self.chars[idx].i ~= idx then
                 error('indexing issue in text '..self.raw_string)
             else
-                if align == 'center' then
+                if self.align == 'center' then
                     self.chars[idx].x = center - line_width/2 + self.font:getWidth(cur_line)
-                elseif align == 'right' then
-                    self.chars[idx].x = (limit - line_width) + self.font:getWidth(cur_line)
-                elseif align == 'left' then
+                elseif self.align == 'right' then
+                    self.chars[idx].x = (self.limit - line_width) + self.font:getWidth(cur_line)
+                elseif self.align == 'left' then
                     self.chars[idx].x = self.font:getWidth(cur_line)
                 end
                 self.chars[idx].y = (gaps-1)*height
@@ -92,8 +101,6 @@ function text:position(align, limit)
             end
         end
     end
-    self.limit = limit
-    self.align = align
     self:init_tags()
 end
 
@@ -114,11 +121,12 @@ function text:update(dt)
     end
 end
 
---UNCOMMENT THIS TEXT TO SEE IT WHEN IT HASN'T GOT THE CANVAS ENABLED
+
 function text:print(x, y)
-    --graphics.setCanvas()
-    --x, y = x * window.scale, y * window.scale
-    colours.white:set()
+    --love.graphics.draw(global_canvas, 0, 0, 0, window.scale, window.scale)
+    canvases:draw()
+    --graphics.setDefaultFilter('linear', 'linear')
+    x, y = x * window.scale, y * window.scale
     for _, v in pairs(self.chars) do
         for _, tag in pairs(v.tags) do
             if tag.draw then tag.draw() end
@@ -126,8 +134,10 @@ function text:print(x, y)
         graphics.draw(v.obj, x + v.x, y + v.y)
         colours.white:set()
     end
-    --graphics.setCanvas(self.canvas)
+    graphics.setDefaultFilter('nearest', 'nearest')
+    canvases:another()
 end
+
 
 box = Object:extend()
 
@@ -135,45 +145,74 @@ function box:new(x, y, w, h, c)
     if c == nil then c = colours.white end
     self.colour = c
     self.x, self.y, self.w, self.h = x, y, w, h
+    self.scale_prop = {w = 1, h = 1}
 end
 
-function box:scale(s)
-    self.x = self.x - s
-    self.y = self.y - s
-    self.w = self.w + 2*s 
-    self.h = self.h + 2*s 
+function box:scale(w, h)
+    if h == nil then h = w end
+    self.x = self.x - (self.w*w - self.w)/2
+    self.y = self.y - (self.h*h - self.h)/2
+    self.w = self.w*w
+    self.h = self.h*h
 end
 
-function box:draw(fill, c, r)
+function box:r_scale(w, h)
+    if h == nil then h = w end
+    self:scale(1/w, 1/h)
+end
+
+function box:draw(fill, c, r, w)
+    if w == nil then w = 1 end
     if c == nil then
         self.colour:set()
     else
         c:set()
     end
     if r == nil then r = 2 end
-    graphics.rectangle(fill, self.x, self.y, self.w, self.h, r, r)
+    local prev_w = graphics.getLineWidth()
+    graphics.setLineWidth(w)
+    graphics.rectangle(fill, self.x - (self.w*self.scale_prop.w - self.w)/2,
+    self.y - (self.h*self.scale_prop.h - self.h)/2, self.w*self.scale_prop.w, self.h*self.scale_prop.h, r, r)
+    graphics.setLineWidth(prev_w)
 end
 
+function box:intercept(x, y)
+    return x > self.x and x < self.x + self.w and y > self.y and y < self.y + self.h
+end
 
 textbox = Object:extend()
 
-function textbox:new(txt, x, y)
+function textbox:new(txt, timer, x, y)
     self.text = txt
     if x == nil then x, y = 0, 0 end
+    self.padding = {
+        above = 5,
+        below = 5,
+        left = 5,
+        right = 5
+    }
+
     self:move(x, y)
 
+    self.id = {
+        main = UUID()
+    }
+    self.id.move = self.id.main..'move'
+    self.id.pressed = self.id.main..'pressed'
+
+    self.timer = timer
     self.corners = 2
-    self.fill = false
-    self.draw_line = false
-    self.fill_colour = colours.invis
+    self.fill = true
+    self.draw_line = true
+    self.on_click = false
+    self.fill_colour = colours.transparent.black
     self.line_colour = colours.white
-    self.parent = true
 
     --tooltips to display on hover
     self.tooltips = {}
     self.hovering = false
     self.display_tooltips = false
-    self.tooltip_spacing = 10
+    self.tooltip_spacing = 5
 
     --follow will follow the mouse
     --position determines which corner is touching the mouse
@@ -183,10 +222,10 @@ end
 function textbox:move(x, y)
     self.x, self.y = x, y
 
-    self.box = box(table.min(self.text.chars, 'x') + self.x, 
-    table.min(self.text.chars, 'y') + self.y,
-    (table.max(self.text.chars, 'x') - table.min(self.text.chars, 'x') + self.text.text_width)/2, 
-    (table.max(self.text.chars, 'y') - table.min(self.text.chars, 'y') + self.text.line_height)/2)
+    self.box = box(table.min(self.text.chars, 'x')/window.scale + self.x - self.padding.left, 
+    table.min(self.text.chars, 'y') + self.y - self.padding.above,
+    (table.max(self.text.chars, 'x') - table.min(self.text.chars, 'x') + self.text.text_width + self.padding.right + self.padding.left*window.scale)/window.scale, 
+    (table.max(self.text.chars, 'y') - table.min(self.text.chars, 'y') + self.text.line_height + self.padding.below + self.padding.above*window.scale)/window.scale)
 end
 
 function textbox:add_tooltip(textbox)
@@ -217,14 +256,20 @@ function textbox:align_tooltips()
     capsule.y = y - self.tooltip_spacing - capsule.h
 
     if self.tooltip_display.follow and pos == 'top-right' then
-        capsule.x = capsule.x + capsule.w/2
+        capsule.x = capsule.x + capsule.w/4
     elseif self.tooltip_display.follow and pos == 'top-left' then
-        capsule.x = capsule.x - capsule.w/2
+        capsule.x = capsule.x - 3*capsule.w/4
     end
+
+    if not self.tooltip_display.follow and pos == 'bottom-right' then
+        capsule.y = y + self.box.h + self.tooltip_spacing
+    end
+
     local cur_width = 0
 
     for _, tt in pairs(self.tooltips) do
-        tt:move(capsule.x + cur_width, capsule.y)
+        local sub = table.min(tt.text.chars, 'x')/2
+        tt:move(capsule.x + cur_width - sub, capsule.y)
         cur_width = cur_width + tt.box.w + self.tooltip_spacing
     end
 end
@@ -235,11 +280,55 @@ function textbox:draw_tooltips()
     end
 end
 
+function textbox:add_function(func, ...)
+    self.func = func
+    self.on_click = true
+    self.params = {...}
+end
+
 function textbox:update(dt)
-    for _, tt in pairs(self.tooltips) do
-        tt:update(dt)
+    if self.hovering then
+        for _, tt in pairs(self.tooltips) do
+            tt:update(dt)
+        end
     end
     self.text:update(dt)
+end
+
+function textbox:mousemoved()
+    if self.box:intercept(mouse.x, mouse.y) then
+        if not self.hovering then
+            self.hovering = true
+            self.timer:cancel(self.id.move)
+            self.box.scale_prop.w = 1
+            self.timer:tween(0.5, self.box, {scale_prop = {w = 1.05}}, 'out-cubic', function () 
+                self.timer:tween(0.5, self.box, {scale_prop = {w = 1}}, 'out-linear', function () end, self.id.move) 
+            end, self.id.move)
+        end
+        if self.tooltip_display.follow then
+            self:align_tooltips()
+        end
+    else
+        if self.hovering then
+            self.timer:cancel(self.id.move)
+            self.timer:tween(0.5, self.box, {scale_prop = {w = 1}}, 'out-linear', function ()
+                self.box.scale_prop.w = 1
+            end, self.id.move)
+            self.hovering = false
+        end
+    end
+end
+
+function textbox:mousepressed()
+    if self.box:intercept(mouse.x, mouse.y) and self.on_click then
+        self.timer:cancel(self.id.pressed)
+        self.box.scale_prop.w = 1
+        self.timer:tween(0.2, self.box, {scale_prop = {w = 0.85, h = 0.95}}, 'out-elastic', function ()
+            self.timer:tween(0.5, self.box, {scale_prop = {w = 1, h = 1}}, 'out-linear', function ()
+            self.box.scale_prop = {w = 1, h = 1} end)
+        end, self.id.pressed)
+        self.func(unpack(self.params))
+    end
 end
 
 function textbox:draw()
@@ -249,9 +338,10 @@ function textbox:draw()
     if self.draw_line then
         self.box:draw('line', self.line_colour, self.corners)
     end
+    colours.white:set()
     self.text:print(self.x, self.y)
-    local box = box(self.x, self.y, self.text.limit, self.text.line_height, colours.red)
-    box:draw('line')
-    --self:draw_tooltips()
+    if self.hovering then
+        self:draw_tooltips()
+    end
     colours.white:set()
 end
