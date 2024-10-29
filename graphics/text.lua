@@ -345,3 +345,52 @@ function textbox:draw()
     end
     colours.white:set()
 end
+
+text_tags = {
+    shaking = {
+        init = function(char)
+            char.shake = 1.1
+            char.lock = {x = char.x, y = char.y}
+            char.step = 2
+        end,
+        update = function (dt, char)
+            char.step = char.step - 1
+            if char.step <= 0 then
+                char.x = char.lock.x
+                char.y = char.lock.y
+                char.x = char.x + random_float(-char.shake/2, char.shake/2)
+                char.y = char.y + random_float(-char.shake/2, char.shake/2)
+                char.step = 2
+            end
+        end
+    },
+    float = {
+        init = function (char)         
+            char.moved = math.random(0, 4)
+            char.dir = 1
+        end,
+        update = function (dt, char)
+            char.y = char.y + -1*char.dir
+            char.moved = char.moved + 1
+            if char.moved > 4 and char.dir == 1 then char.moved = 0; char.dir = -1/10
+            elseif char.moved > 4 and char.dir == -1 then char.moved = 0; char.dir = 1/10 end
+        end
+    },
+    roll = {
+        init = function (char)         
+            char.step = 4 + char.i*2
+            char.moved = 0
+            char.dir = 1
+        end,
+        update = function (dt, char)
+            char.step = char.step - 1
+            if char.step <= 0 then
+                char.y = char.y + -1*char.dir
+                char.moved = char.moved + 1
+                char.step = 4
+                if char.moved > 4 and char.dir == 1 then char.moved = 0; char.dir = -1
+                elseif char.moved > 4 and char.dir == -1 then char.moved = 0; char.dir = 1 end
+            end
+        end
+    }
+}
