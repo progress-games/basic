@@ -1,396 +1,185 @@
-text = Object:extend()
+Text = Object:extend()
 
---[[
-how to use
+function Text:new(args)
+    self.fx = args.fx or {}
+    self.font = args.font or love.graphics.newFont(16)
+end
 
-define some text tags
-text tags are things that apply to text that either happen at initiation of text, update, or draw
+function Text:newText(args)
+    return TextObj(args.txt, self.fx, self.font, args.align, args.limit)
+end
 
-an example is
+TextObj = Object:extend()
 
-yellow = {
-    draw = function ()
-        colours.yellow:set()
-    end
-}
+function TextObj:new(args)
+    self.fx = args.fx
+    self.font = args.font
 
-when we add this to text, it will draw it in yellow (provided we have defined colours.yellow)
-adding this to text is just doing 'this text is[yellow] yellow' so the words following [yellow] will be in yellow
+    self.cleaned = self:cleanText(args.text)
 
-GOAL:
-we can make a textbox that automatically encapsulates a text object
-we can then add additional textboxes (called tooltips) that appear when interacting with the main textbox
-we can also add a function to the textbox that calls on press which turns it into a button
-we can also add satisfying movement to the box when the mouse hovers over it
-]]
+    self.chars, self.raw = self:addFx(self.cleaned)
+    self.drawable = nil
 
-function text:new(txt, fx, font, align, limit)
-    if txt:sub(1, 1) ~= '[' then
-        txt = '[white]'..txt 
-    end
-
-    self.cleaned_text = {}
-    self.raw_string = ''
-    self.line_height = font:getHeight()--/window.scale
-    self.text_width = font:getWidth('v')
-    self.chars = {}
-    self.v = 0
-    self.font = font
-    for str, tags in txt:gmatch("([^%[]*)(%b[])") do
-        if str ~= "" then
-            table.insert(self.cleaned_text, str)
-        end
-        table.insert(self.cleaned_text, tags:sub(2, -2):gsub("%s+", ""):split(","))
-    end
-
-    local last = txt:match(".+%](.*)$")
-    if last ~= "" then
-        table.insert(self.cleaned_text, last)
-    end
-
-    local active_fx, a = {}, 1
-    for _, str in ipairs(self.cleaned_text) do
-        if type(str) == 'table' then
-            active_fx = str
-            active_fx = table.apply(active_fx, function (s) return fx[s] end)
-        else
-            self.raw_string = self.raw_string..str
-            for c in str:gmatch'.' do
-                table.insert(self.chars, {
-                    obj = graphics.newText(self.font, c),
-                    tags = active_fx,
-                    i = a, x = 0, y = 0
-                })
-                a = a + 1
-            end
-        end
-    end
-
-    if align == nil then align = 'center' end
-    if limit == nil then limit = 100 end
-    self.align, self.limit = align, limit*window.scale
+    self.align = args.align or 'left'
+    self.limit = args.limit or 100
     self:position()
 end
 
-function text:position(align, limit)
-    if align == nil then
-        align, limit = self.align, self.limit
-    else
-        self.align, self.limit = align, limit
+function TextObj:cleanText(text)
+    local cleaned = {}
+
+    if text:sub(1, 1) ~= '[' then
+        text = '[white]'..text
     end
 
-    _, self.lines = self.font:getWrap(self.raw_string, self.limit)
+    for str, tags in txt:gmatch("([^%[]*)(%b[])") do
+        if str ~= "" then
+            table.insert(cleaned, str)
+        end
+        table.insert(cleaned, tags:sub(2, -2):gsub("%s+", ""):split(","))
+    end
+
+    local last = text:match(".+%](.*)$")
+    if last ~= "" then
+        table.insert(cleaned, last)
+    end
+
+    return cleaned
+end
+
+function TextObj:addFx(cleaned)
+    local active, raw, chars = {}, '', {}
+
+    for i, str in ipairs(cleaned) do 
+        if type(str) == 'table' then
+            active = str
+            active = table.map(active, function (s) return self.fx[s] end)
+        else
+            raw = raw..str
+
+            for c in str:gmatch'.' do
+                table.insert(chars, {
+                    c = c,
+                    tags = active,
+                    i = i,
+                    x = 0,
+                    y = 0
+                })
+            end
+        end
+    end
+
+    return chars, raw
+end
+
+function TextObj:position()
+    _, self.lines = self.font:getWrap(self.raw, self.limit)
     local center, height = self.limit/2, self.font:getHeight()
-    local idx = 1
-    for gaps, line in ipairs(self.lines) do
-        local cur_line, line_width = '', self.font:getWidth(line)
+    self.height = #self.lines * height
+
+    for i, line in ipairs(self.lines) do
+        local cur, width = '', self.font:getWidth(line)
+
         for c in line:gmatch'.' do
-            if self.chars[idx].i ~= idx then
-                error('indexing issue in text '..self.raw_string)
+            local cur_width = self.font:getWidth(cur)
+
+            if self.align == 'center' then
+                self.chars[i].x = center - width/2 + cur_width
+            elseif self.align == 'right' then
+                self.chars[i].x = (self.limit - width) + cur_width
             else
-                if self.align == 'center' then
-                    self.chars[idx].x = center - line_width/2 + self.font:getWidth(cur_line)
-                elseif self.align == 'right' then
-                    self.chars[idx].x = (self.limit - line_width) + self.font:getWidth(cur_line)
-                elseif self.align == 'left' then
-                    self.chars[idx].x = self.font:getWidth(cur_line)
-                end
-                self.chars[idx].y = (gaps-1)*height
-                cur_line = cur_line..c
-                idx = idx + 1
+                self.chars[i].x = cur_width
             end
+            self.chars[i].y = (i - 1)*height
+            cur = cur..c
         end
     end
-    self:init_tags()
+
+    self:initTags()
 end
 
-function text:init_tags()
+function TextObj:initTags()
     for _, v in pairs(self.chars) do
         for _, tag in pairs(v.tags) do
-            if tag.init then tag.init(v) end
-        end
-    end
-    graphics.setCanvas()
-end
-
-function text:update(dt)
-    for _, v in pairs(self.chars) do
-        for _, tag in pairs(v.tags) do
-            if tag.update then tag.update(dt, v) end
+            tag:init(v)
         end
     end
 end
 
-
-function text:print(x, y)
-    --love.graphics.draw(global_canvas, 0, 0, 0, window.scale, window.scale)
-    canvases:draw()
-    --graphics.setDefaultFilter('linear', 'linear')
-    x, y = x * window.scale, y * window.scale
-    for _, v in pairs(self.chars) do
-        for _, tag in pairs(v.tags) do
-            if tag.draw then tag.draw() end
+function TextObj:update(dt)
+    for _, c in pairs(self.chars) do
+        for _, tag in pairs(c.tags) do
+            tag:update(dt, c)
         end
-        graphics.draw(v.obj, x + v.x, y + v.y)
-        colours.white:set()
     end
-    graphics.setDefaultFilter('nearest', 'nearest')
-    canvases:another()
+end
+
+function TextObj:print(args)
+    local x, y = args.x, args.y
+    for _, c in pairs(self.chars) do
+        for _, tag in pairs(c.tags) do
+            tag:draw(c, x.x + x, c.y + y)
+        end
+        love.graphics.print(c.c, c.x + x, c.y + y)
+    end
 end
 
 
-box = Object:extend()
+TextTag = Object:extend()
 
-function box:new(x, y, w, h, c)
-    if c == nil then c = colours.white end
+function TextTag:new() end
+
+function TextTag:init(c) end
+
+function TextTag:update(dt, c) end
+
+function TextTag:draw(c, x, y) end
+
+-- Some basic text tags
+
+local ColourTag = TextTag:extend()
+
+function ColourTag:new(c)
     self.colour = c
-    self.x, self.y, self.w, self.h = x, y, w, h
-    self.scale_prop = {w = 1, h = 1}
 end
 
-function box:scale(w, h)
-    if h == nil then h = w end
-    self.x = self.x - (self.w*w - self.w)/2
-    self.y = self.y - (self.h*h - self.h)/2
-    self.w = self.w*w
-    self.h = self.h*h
+function ColourTag:draw(...)
+    self.colour:set()
 end
 
-function box:r_scale(w, h)
-    if h == nil then h = w end
-    self:scale(1/w, 1/h)
+local OutlineTag = TextTag:extend()
+
+function OutlineTag:new(n)
+    self.border = n
 end
 
-function box:draw(fill, c, r, w)
-    if w == nil then w = 1 end
-    if c == nil then
-        self.colour:set()
-    else
-        c:set()
-    end
-    if r == nil then r = 2 end
-    local prev_w = graphics.getLineWidth()
-    graphics.setLineWidth(w)
-    graphics.rectangle(fill, self.x - (self.w*self.scale_prop.w - self.w)/2,
-    self.y - (self.h*self.scale_prop.h - self.h)/2, self.w*self.scale_prop.w, self.h*self.scale_prop.h, r, r)
-    graphics.setLineWidth(prev_w)
+function OutlineTag:draw(c, x, y)
+    local r, g, b, a = love.graphics.getColor()
+    love.graphics.setColor(0, 0, 0, 1)
+    love.graphics.print(c, x - self.border, y)
+    love.graphics.print(c, x + self.border, y)
+    love.graphics.print(c, x - self.border, y - self.border)
+    love.graphics.print(c, x + self.border, y - self.border)
+    love.graphics.print(c, x - self.border, y + self.border)
+    love.graphics.print(c, x - self.border, y + self.border)
+    love.graphics.print(c, x, y - self.border)
+    love.graphics.print(c, x, y + self.border)
+    love.graphics.setColor(r, g, b, a)
 end
 
-function box:intercept(x, y)
-    return x > self.x and x < self.x + self.w and y > self.y and y < self.y + self.h
+local RollTag = TextTag:extend()
+
+function RollTag:new(height, speed)
+    self.h = function (v) return height*math.cos(((2*math.pi)/speed)*v)
 end
 
-textbox = Object:extend()
-
-function textbox:new(txt, timer, x, y)
-    self.text = txt
-    if x == nil then x, y = 0, 0 end
-    self.padding = {
-        above = 5,
-        below = 5,
-        left = 5,
-        right = 5
-    }
-
-    self:move(x, y)
-
-    self.id = {
-        main = UUID()
-    }
-    self.id.move = self.id.main..'move'
-    self.id.pressed = self.id.main..'pressed'
-
-    self.timer = timer
-    self.corners = 2
-    self.fill = true
-    self.draw_line = true
-    self.on_click = false
-    self.fill_colour = colours.transparent.black
-    self.line_colour = colours.white
-
-    --tooltips to display on hover
-    self.tooltips = {}
-    self.hovering = false
-    self.display_tooltips = false
-    self.tooltip_spacing = 5
-
-    --follow will follow the mouse
-    --position determines which corner is touching the mouse
-    self.tooltip_display = {follow = false, position = 'top-left'}
+function RollTag:init(c)
+    char.frame = char.i
+    char.y = char.y + self.h(char.frame)
 end
 
-function textbox:move(x, y)
-    self.x, self.y = x, y
-
-    self.box = box(table.min(self.text.chars, 'x')/window.scale + self.x - self.padding.left, 
-    table.min(self.text.chars, 'y') + self.y - self.padding.above,
-    (table.max(self.text.chars, 'x') - table.min(self.text.chars, 'x') + self.text.text_width + self.padding.right + self.padding.left*window.scale)/window.scale, 
-    (table.max(self.text.chars, 'y') - table.min(self.text.chars, 'y') + self.text.line_height + self.padding.below + self.padding.above*window.scale)/window.scale)
+function RollTag:update(dt, c)
+    char.y = char.y - self.h(char.frame)
+    char.frame = char.frame + 1
+    char.y = char.y + self.h(char.frame)
 end
-
-function textbox:add_tooltip(textbox)
-    table.insert(self.tooltips, textbox)
-    self:align_tooltips()
-end
-
-function textbox:align_tooltips()
-    local pos = self.tooltip_display.position
-
-    if self.tooltip_display.follow then
-        x, y = mouse.x, mouse.y
-    else
-        x, y = self.box.x, self.box.y
-    end
-
-    local capsule = {x = 0, y = 0, w = 0, h = 0}
-
-    for k, tt in pairs(self.tooltips) do
-        capsule.w = capsule.w + tt.box.w
-        if k < #self.tooltips then 
-            capsule.w = capsule.w + self.tooltip_spacing 
-        end
-        capsule.h = math.max(capsule.h, tt.box.h)
-    end
-
-    capsule.x = x + self.box.w/2 - capsule.w/2
-    capsule.y = y - self.tooltip_spacing - capsule.h
-
-    if self.tooltip_display.follow and pos == 'top-right' then
-        capsule.x = capsule.x + capsule.w/4
-    elseif self.tooltip_display.follow and pos == 'top-left' then
-        capsule.x = capsule.x - 3*capsule.w/4
-    end
-
-    if not self.tooltip_display.follow and pos == 'bottom-right' then
-        capsule.y = y + self.box.h + self.tooltip_spacing
-    end
-
-    local cur_width = 0
-
-    for _, tt in pairs(self.tooltips) do
-        local sub = table.min(tt.text.chars, 'x')/2
-        tt:move(capsule.x + cur_width - sub, capsule.y)
-        cur_width = cur_width + tt.box.w + self.tooltip_spacing
-    end
-end
-
-function textbox:draw_tooltips()
-    for _, tt in pairs(self.tooltips) do
-        tt:draw()
-    end
-end
-
-function textbox:add_function(func, ...)
-    self.func = func
-    self.on_click = true
-    self.params = {...}
-end
-
-function textbox:update(dt)
-    if self.hovering then
-        for _, tt in pairs(self.tooltips) do
-            tt:update(dt)
-        end
-    end
-    self.text:update(dt)
-end
-
-function textbox:mousemoved()
-    if self.box:intercept(mouse.x, mouse.y) then
-        if not self.hovering then
-            self.hovering = true
-            self.timer:cancel(self.id.move)
-            self.box.scale_prop.w = 1
-            self.timer:tween(0.5, self.box, {scale_prop = {w = 1.05}}, 'out-cubic', function () 
-                self.timer:tween(0.5, self.box, {scale_prop = {w = 1}}, 'out-linear', function () end, self.id.move) 
-            end, self.id.move)
-        end
-        if self.tooltip_display.follow then
-            self:align_tooltips()
-        end
-    else
-        if self.hovering then
-            self.timer:cancel(self.id.move)
-            self.timer:tween(0.5, self.box, {scale_prop = {w = 1}}, 'out-linear', function ()
-                self.box.scale_prop.w = 1
-            end, self.id.move)
-            self.hovering = false
-        end
-    end
-end
-
-function textbox:mousepressed()
-    if self.box:intercept(mouse.x, mouse.y) and self.on_click then
-        self.timer:cancel(self.id.pressed)
-        self.box.scale_prop.w = 1
-        self.timer:tween(0.2, self.box, {scale_prop = {w = 0.85, h = 0.95}}, 'out-elastic', function ()
-            self.timer:tween(0.5, self.box, {scale_prop = {w = 1, h = 1}}, 'out-linear', function ()
-            self.box.scale_prop = {w = 1, h = 1} end)
-        end, self.id.pressed)
-        self.func(unpack(self.params))
-    end
-end
-
-function textbox:draw()
-    if self.fill then
-        self.box:draw('fill', self.fill_colour, self.corners)
-    end
-    if self.draw_line then
-        self.box:draw('line', self.line_colour, self.corners)
-    end
-    colours.white:set()
-    self.text:print(self.x, self.y)
-    if self.hovering then
-        self:draw_tooltips()
-    end
-    colours.white:set()
-end
-
-text_tags = {
-    shaking = {
-        init = function(char)
-            char.shake = 1.1
-            char.lock = {x = char.x, y = char.y}
-            char.step = 2
-        end,
-        update = function (dt, char)
-            char.step = char.step - 1
-            if char.step <= 0 then
-                char.x = char.lock.x
-                char.y = char.lock.y
-                char.x = char.x + random_float(-char.shake/2, char.shake/2)
-                char.y = char.y + random_float(-char.shake/2, char.shake/2)
-                char.step = 2
-            end
-        end
-    },
-    float = {
-        init = function (char)         
-            char.moved = math.random(0, 4)
-            char.dir = 1
-        end,
-        update = function (dt, char)
-            char.y = char.y + -1*char.dir
-            char.moved = char.moved + 1
-            if char.moved > 4 and char.dir == 1 then char.moved = 0; char.dir = -1/10
-            elseif char.moved > 4 and char.dir == -1 then char.moved = 0; char.dir = 1/10 end
-        end
-    },
-    roll = {
-        init = function (char)         
-            char.step = 4 + char.i*2
-            char.moved = 0
-            char.dir = 1
-        end,
-        update = function (dt, char)
-            char.step = char.step - 1
-            if char.step <= 0 then
-                char.y = char.y + -1*char.dir
-                char.moved = char.moved + 1
-                char.step = 4
-                if char.moved > 4 and char.dir == 1 then char.moved = 0; char.dir = -1
-                elseif char.moved > 4 and char.dir == -1 then char.moved = 0; char.dir = 1 end
-            end
-        end
-    }
-}
