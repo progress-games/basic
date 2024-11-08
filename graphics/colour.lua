@@ -21,6 +21,10 @@ function Colour:random(range)
     end
 end
 
+function Colour:unpack()
+    return self.r, self.g, self.b, self.a
+end
+
 function Colour:lighten(amount)
     amount = (amount or 10)/255
     return Colour(self.r + amount, self.g + amount, self.b + amount)
