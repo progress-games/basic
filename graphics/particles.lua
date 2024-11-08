@@ -74,5 +74,6 @@ function Particles:draw()
 
     for _, ps in pairs(self.systems) do
         outline(function () love.graphics.draw(ps.system, 0, 0) end, ps.outline.width, ps.outline.colour)
+        love.graphics.draw(ps.system, 0, 0)
     end
 end

@@ -14,5 +14,4 @@ function outline(func, border, colour)
         graphics.pop()
     end
     graphics.setColor(unpack(c))
-    func()
 end

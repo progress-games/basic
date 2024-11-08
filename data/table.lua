@@ -1,3 +1,10 @@
+function table.map(t, f)
+    local out = {}
+    for _, v in pairs(t) do
+        table.insert(out, f[v])
+    end
+    return out
+end
 
 --table
 function table.copy(t)
@@ -12,12 +19,7 @@ function table.copy(t)
     return t2
 end
 
-
-function table.inkeys(t, k)
-    return t[k] ~= nil
-end
-
-function table.invals(t, v)
+function table.index(t, v)
     for i, k in pairs(t) do
         if type(v) == 'table' and type(k) == 'table' then
             if table.match(v, k) then return i end
@@ -35,38 +37,10 @@ function table.slice(tbl, first, last, step)
     return sliced
 end
 
---calls each table function
-function table.call(t, func, ...)
+function table.forEach(t, func, ...)
     for _, v in pairs(t) do
         func(v, ...)
     end
-end
-
---creates a new table where each item is the original passed through a funciton
-function table.apply(t, func)
-    local res = {}
-    for k, v in pairs(t) do
-        local x = func(v)
-        if x then
-            if type(k) ~= 'number' then
-                res[k] = x
-            else
-                table.insert(res, x)
-            end
-        end
-    end
-    return res
-end
-
-function table.k_apply(t, func)
-    local res = {}
-    for k, v in pairs(t) do
-        local x = func(k)
-        if x then
-            table.insert(res, v)
-        end
-    end
-    return res
 end
 
 function table.stringify(t)

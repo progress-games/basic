@@ -154,17 +154,7 @@ function OutlineTag:new(n)
 end
 
 function OutlineTag:draw(c, x, y)
-    local r, g, b, a = love.graphics.getColor()
-    love.graphics.setColor(0, 0, 0, 1)
-    love.graphics.print(c, x - self.border, y)
-    love.graphics.print(c, x + self.border, y)
-    love.graphics.print(c, x - self.border, y - self.border)
-    love.graphics.print(c, x + self.border, y - self.border)
-    love.graphics.print(c, x - self.border, y + self.border)
-    love.graphics.print(c, x - self.border, y + self.border)
-    love.graphics.print(c, x, y - self.border)
-    love.graphics.print(c, x, y + self.border)
-    love.graphics.setColor(r, g, b, a)
+    outline(function () graphics.print(c, x, y) end, Colour(0, 0, 0), self.border)
 end
 
 local RollTag = TextTag:extend()
