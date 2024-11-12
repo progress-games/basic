@@ -24,7 +24,7 @@ function Particles:updateVis(new)
     self.on = new
 end
 
-function Particles:newSystem(name, args)
+function Particles:new_system(name, args)
     local img = args.sprite or g.newCanvas(self.default.base, self.default.base)
     if not args.img then
         g.setCanvas(img)

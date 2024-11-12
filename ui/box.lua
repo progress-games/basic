@@ -9,10 +9,10 @@ function Box:new(x, y, w, h, col, rot)
     self.scale = 1
     self.base = 1
 
-    self:calculatePoints()
+    self:calculate_points()
 end
 
-function Box:calculatePoints()
+function Box:calculate_points()
     if self.rot == 0 then 
         return nil 
     end
@@ -133,7 +133,7 @@ function Box:collide(b)
             {self.x + self.w/2, self.y+self.h/2}
         }
     else
-        self:calculatePoints()
+        self:calculate_points()
         corners = self.points
     end
 

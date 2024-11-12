@@ -6,6 +6,13 @@ function table.map(t, f)
     return out
 end
 
+function table.reduce(t, f, a)
+    for _, v in pairs(t) do
+        a = f(a, v)
+    end
+    return a
+end
+
 --table
 function table.copy(t)
     local t2 = {}
@@ -37,7 +44,7 @@ function table.slice(tbl, first, last, step)
     return sliced
 end
 
-function table.forEach(t, func, ...)
+function table.for_each(t, func, ...)
     for _, v in pairs(t) do
         func(v, ...)
     end

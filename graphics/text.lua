@@ -5,7 +5,7 @@ function Text:new(args)
     self.font = args.font or love.graphics.newFont(16)
 end
 
-function Text:newText(args)
+function Text:new_text(args)
     return TextObj(args.txt, self.fx, self.font, args.align, args.limit)
 end
 
@@ -15,17 +15,24 @@ function TextObj:new(args)
     self.fx = args.fx
     self.font = args.font
 
-    self.cleaned = self:cleanText(args.text)
+    self.cleaned = self:clean_text(args.text)
 
-    self.chars, self.raw = self:addFx(self.cleaned)
+    self.chars, self.raw = self:add_fx(self.cleaned)
     self.drawable = nil
 
     self.align = args.align or 'left'
     self.limit = args.limit or 100
     self:position()
+
+    -- tight bounding box
+    local x = table.reduce(self.chars, function (acc, val) return math.min(acc, val.x) end, math.huge)
+    local y = table.reduce(self.chars, function (acc, val) return math.min(acc, val.y) end, math.huge)
+    local w = table.reduce(self.chars, function (acc, val) return math.max(acc, val.x + self.font:width(val.c)) end, 0)
+    local h = table.reduce(self.chars, function (acc, val) return math.max(acc, val.y + self.font:height()), 0)
+    self.box = Box(x, y, w, h)
 end
 
-function TextObj:cleanText(text)
+function TextObj:clean_text(text)
     local cleaned = {}
 
     if text:sub(1, 1) ~= '[' then
@@ -47,7 +54,7 @@ function TextObj:cleanText(text)
     return cleaned
 end
 
-function TextObj:addFx(cleaned)
+function TextObj:add_fx(cleaned)
     local active, raw, chars = {}, '', {}
 
     for i, str in ipairs(cleaned) do 
@@ -98,7 +105,7 @@ function TextObj:position()
     self:initTags()
 end
 
-function TextObj:initTags()
+function TextObj:init_tags()
     for _, v in pairs(self.chars) do
         for _, tag in pairs(v.tags) do
             tag:init(v)

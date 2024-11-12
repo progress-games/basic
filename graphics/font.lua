@@ -8,14 +8,14 @@ function Font:set()
     graphics.setFont(self.font)
 end
 
-function Font:getWidth(str)
+function Font:width(str)
     return self.font:getWidth(str)
 end
 
-function Font:getHeight()
+function Font:height()
     return self.font:getHeight()
 end
 
-function Font:getWrap(text, limit)
+function Font:wrap(text, limit)
     return self.font:getWrap(text, limit)
 end

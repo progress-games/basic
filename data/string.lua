@@ -6,3 +6,7 @@ function string:split(s)
     end
     return out
 end
+
+function string:upper(s)
+  string.upper(s)
+end
