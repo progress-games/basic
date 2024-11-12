@@ -31,7 +31,7 @@ function Description:align_tooltips()
             if pos == 'above' then
                 v:move(self.box.x - self.box.w/2 + w, capsule.y)
             elseif pos == 'below' then
-                v:move(self.box.x - self.box.w/2 + w,, self.box.y + self.box.h + self.tooltip_spacing)
+                v:move(self.box.x - self.box.w/2 + w, self.box.y + self.box.h + self.tooltip_spacing)
             end
         end   
         

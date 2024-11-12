@@ -28,7 +28,7 @@ function TextObj:new(args)
     local x = table.reduce(self.chars, function (acc, val) return math.min(acc, val.x) end, math.huge)
     local y = table.reduce(self.chars, function (acc, val) return math.min(acc, val.y) end, math.huge)
     local w = table.reduce(self.chars, function (acc, val) return math.max(acc, val.x + self.font:width(val.c)) end, 0)
-    local h = table.reduce(self.chars, function (acc, val) return math.max(acc, val.y + self.font:height()), 0)
+    local h = table.reduce(self.chars, function (acc, val) return math.max(acc, val.y + self.font:height()) end, 0)
     self.box = Box(x, y, w, h)
 end
 
@@ -167,7 +167,7 @@ end
 local RollTag = TextTag:extend()
 
 function RollTag:new(height, speed)
-    self.h = function (v) return height*math.cos(((2*math.pi)/speed)*v)
+    self.h = function (v) return height*math.cos(((2*math.pi)/speed)*v) end
 end
 
 function RollTag:init(c)

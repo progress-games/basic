@@ -7,16 +7,18 @@
 
 
 
-BF = {}
+bf = {}
 
 
 local Collider = require(... ..'/collider')
 local World = require(... ..'/world')
 
 
-function BF.newWorld(...)
-   return BF.World:new(...)
+function bf.newWorld(...)
+   return bf.World:new(...)
 end
 
-BF.Collider = Collider
-BF.World = World
+bf.Collider = Collider
+bf.World = World
+
+return bf

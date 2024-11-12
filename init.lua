@@ -1,19 +1,24 @@
-local function require_all(directory)
-    local lfs = love.filesystem
+local path = ...
 
-    local function require_files(path)
-        for _, item in ipairs(lfs.getDirectoryItems(path)) do
-            local fullPath = path .. "/" .. item
-            if lfs.getInfo(fullPath, "directory") then
-                requireFiles(fullPath)
-            elseif item:match("%.lua$") then
-                local modulePath = fullPath:gsub("%.lua$", ""):gsub("/", ".")
-                require(modulePath)
-            end
-        end
-    end
-
-    require_files(directory)
-end
-
-require_all(love.filesystem.getSourceBaseDirectory())
+Object = require(path..'.data.classic')
+require(path..'.data.string')
+require(path..'.data.table')
+require(path..'.data.uuid')
+require(path..'.debug.log')
+require(path..'.graphics.camera') -- review
+require(path..'.graphics.colour')
+require(path..'.graphics.drawable')
+require(path..'.graphics.font')
+require(path..'.graphics.outline')
+require(path..'.graphics.particles')
+require(path..'.graphics.text')
+require(path..'.math.breezefield') -- review
+require(path..'.math.misc')
+require(path..'.math.spring')
+Timer = require(path..'.math.timer') -- update
+require(path..'.sound.sound')
+require(path..'.ui.box')
+require(path..'.ui.textbox')
+require(path..'.ui.description') -- update
+require(path..'.ui.button') -- update
+--
