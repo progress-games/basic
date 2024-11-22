@@ -17,6 +17,7 @@ function Textbox:new(args)
     self.draw_line = args.draw_line or true
     self.fill_colour = args.fill_colour or colours.black:opaque(0.2)
     self.line_colour = args.line_colour or colours.white
+    self.line_width = args.line_width or 1
 end
 
 function Textbox:move(x, y)

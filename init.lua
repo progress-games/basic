@@ -12,7 +12,7 @@ require(path..'.graphics.font')
 require(path..'.graphics.outline')
 require(path..'.graphics.particles')
 require(path..'.graphics.text')
-require(path..'.math.breezefield') -- review
+bf = require(path..'.math.breezefield') -- review
 require(path..'.math.misc')
 require(path..'.math.spring')
 Timer = require(path..'.math.timer') -- update
