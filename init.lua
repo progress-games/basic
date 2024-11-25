@@ -1,6 +1,7 @@
 local path = ...
 
 Object = require(path..'.data.classic')
+require(path..'.data.input')
 require(path..'.data.string')
 require(path..'.data.table')
 require(path..'.data.uuid')
@@ -21,4 +22,3 @@ require(path..'.ui.box')
 require(path..'.ui.textbox')
 require(path..'.ui.description') -- update
 require(path..'.ui.button') -- update
---
